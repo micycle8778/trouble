@@ -409,6 +409,8 @@ impl<'c, 'd, M: RawMutex, const MAX: usize> AttributeServer<'c, 'd, M, MAX> {
 
     /// Process an event and produce a response if necessary
     pub fn process(&self, conn: ConnHandle, packet: &AttReq, rx: &mut [u8]) -> Result<Option<usize>, codec::Error> {
+        debug!("[trouble::attribute_server] workin on packet {:?}", packet);
+
         let len = match packet {
             AttReq::ReadByType {
                 start,

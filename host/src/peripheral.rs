@@ -7,6 +7,7 @@ use bt_hci::cmd::le::{
 use bt_hci::controller::{Controller, ControllerCmdSync};
 use bt_hci::param::{AddrKind, AdvChannelMap, AdvHandle, AdvKind, AdvSet, BdAddr, LeConnRole, Operation};
 use embassy_futures::select::{select, Either};
+use embassy_futures::yield_now;
 
 use crate::advertise::{Advertisement, AdvertisementParameters, AdvertisementSet, RawAdvertisement};
 use crate::connection::Connection;
@@ -38,12 +39,18 @@ impl<'d, C: Controller> Peripheral<'d, C> {
 
         // Ensure no other advertise ongoing.
         let drop = crate::host::OnDrop::new(|| {
+            warn!("[trouble::peripheral] dropping shit!");
             host.advertise_command_state.cancel(false);
         });
+        drop.defuse(); // probably a bad idea
         host.advertise_command_state.request().await;
+        debug!("[trouble::peripheral] advertise 1");
+        yield_now().await;
 
         // Clear current advertising terminations
         host.advertise_state.reset();
+        debug!("[trouble::peripheral] advertise 2");
+        yield_now().await;
 
         let data: RawAdvertisement = data.into();
         if !data.props.legacy_adv() {
@@ -72,6 +79,8 @@ impl<'d, C: Controller> Peripheral<'d, C> {
             params.filter_policy,
         ))
         .await?;
+        debug!("[trouble::peripheral] advertise 3");
+        yield_now().await;
 
         if !data.adv_data.is_empty() {
             let mut buf = [0; 31];
@@ -79,6 +88,8 @@ impl<'d, C: Controller> Peripheral<'d, C> {
             buf[..to_copy].copy_from_slice(&data.adv_data[..to_copy]);
             host.command(LeSetAdvData::new(to_copy as u8, buf)).await?;
         }
+        debug!("[trouble::peripheral] advertise 4");
+        yield_now().await;
 
         if !data.scan_data.is_empty() {
             let mut buf = [0; 31];
@@ -86,6 +97,8 @@ impl<'d, C: Controller> Peripheral<'d, C> {
             buf[..to_copy].copy_from_slice(&data.scan_data[..to_copy]);
             host.command(LeSetScanResponseData::new(to_copy as u8, buf)).await?;
         }
+        debug!("[trouble::peripheral] advertise 5");
+        yield_now().await;
 
         let advset: [AdvSet; 1] = [AdvSet {
             adv_handle: AdvHandle::new(0),
@@ -94,9 +107,9 @@ impl<'d, C: Controller> Peripheral<'d, C> {
         }];
 
         trace!("[host] enabling advertising");
+        yield_now().await;
         host.advertise_state.start(&advset[..]);
         host.command(LeSetAdvEnable::new(true)).await?;
-        drop.defuse();
         Ok(Advertiser {
             stack: self.stack,
             extended: false,

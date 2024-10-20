@@ -72,21 +72,41 @@ impl<'reference, 'values, C: Controller, M: RawMutex, const MAX: usize, const L2
                                 let len = header.len() + data.len();
 
                                 let event = match att {
-                                    AttReq::Write { handle, data } => Some(GattEvent::Write {
-                                        connection,
-                                        handle: self.server.table.find_characteristic_by_value_handle(handle)?,
-                                    }),
+                                    AttReq::Write { handle, data } => {
+                                        debug!("[trouble::gatt] AttReq::Write ( handle: {:?}, data: {:?} )", handle, data);
 
-                                    AttReq::Read { handle } => Some(GattEvent::Read {
-                                        connection,
-                                        handle: self.server.table.find_characteristic_by_value_handle(handle)?,
-                                    }),
+                                        Some(GattEvent::Write {
+                                            connection,
+                                            handle: self.server.table.find_characteristic_by_value_handle(handle)?,
+                                        })
+                                    }
+
+                                    AttReq::WriteCmd { handle, data } => {
+                                        debug!("[trouble::gatt] AttReq::WriteCmd ( handle: {:?}, data: {:?} )", handle, data);
+
+                                        Some(GattEvent::Write {
+                                            connection,
+                                            handle: self.server.table.find_characteristic_by_value_handle(handle)?,
+                                        })
+                                    }
+
+                                    AttReq::Read { handle } => {
+                                        debug!("[trouble::gatt] AttReq::Read ( handle: {:?} )", handle);
+
+                                        Some(GattEvent::Read {
+                                            connection,
+                                            handle: self.server.table.find_characteristic_by_value_handle(handle)?,
+                                        })
+                                    }
 
                                     AttReq::ReadBlob { handle, offset } => Some(GattEvent::Read {
                                         connection,
                                         handle: self.server.table.find_characteristic_by_value_handle(handle)?,
                                     }),
-                                    _ => None,
+                                    x => {
+                                        debug!("[trouble] unknown att: {:?}", x);
+                                        None
+                                    }
                                 };
 
                                 let mut packet = pdu.packet;
